@@ -1,0 +1,11 @@
+services:
+  grok-assistant:
+    build: .
+    container_name: grok-home-assistant
+    restart: unless-stopped
+    env_file:
+      - .env
+    # ports:
+    #   - "8080:8080"
+    volumes:
+      - ./logs:/app/logs

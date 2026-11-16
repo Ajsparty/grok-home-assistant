@@ -1,0 +1,32 @@
+[package]
+name = "grok-home-assistant"
+version = "0.1.0"
+edition = "2021"
+description = "High-performance open-source home voice assistant powered by xAI Grok Voice Agent API"
+license = "MIT"
+authors = ["Aidan Swenson <Swenso44@msu.edu>"]
+repository = "https://github.com/Ajsparty/grok-home-assistant"
+
+[dependencies]
+tokio = { version = "1.40", features = ["full"] }
+tokio-tungstenite = { version = "0.24", features = ["native-tls"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+anyhow = "1.0"
+log = "0.4"
+env_logger = "0.11"
+dotenvy = "0.15"
+base64 = "0.22"
+futures-util = "0.3"
+url = "2.5"
+# Audio (optional, for local mic/speaker)
+cpal = "0.15"
+# HTTP client for Home Assistant
+reqwest = { version = "0.12", features = ["json"] }
+# Config
+config = "0.14"
+
+[profile.release]
+lto = true
+codegen-units = 1
+opt-level = 3
