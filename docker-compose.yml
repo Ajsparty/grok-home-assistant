@@ -5,7 +5,14 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-    # ports:
-    #   - "8080:8080"
+    environment:
+      # The container has no sound card. Room devices run grok-satellite.
+      AUDIO_OUTPUT: satellite
+      HEALTH_BIND: 0.0.0.0
+      SATELLITE_BIND: 0.0.0.0
+    ports:
+      - "8080:8080"
+      - "8765:8765"
     volumes:
       - ./logs:/app/logs
+      - ./data:/app/data

@@ -1,11 +1,29 @@
 [package]
 name = "grok-home-assistant"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
-description = "High-performance open-source home voice assistant powered by xAI Grok Voice Agent API"
+description = "Home voice assistant powered by the xAI Grok Voice Agent API"
 license = "MIT"
 authors = ["Aidan Swenson <Swenso44@msu.edu>"]
 repository = "https://github.com/Ajsparty/grok-home-assistant"
+default-run = "grok-home-assistant"
+
+[lib]
+name = "grok_home_assistant"
+path = "src/lib.rs"
+
+[[bin]]
+name = "grok-home-assistant"
+path = "src/main.rs"
+
+[[bin]]
+name = "grok-satellite"
+path = "src/bin/satellite.rs"
+required-features = ["local-audio"]
+
+[features]
+default = ["local-audio"]
+local-audio = ["dep:cpal"]
 
 [dependencies]
 tokio = { version = "1.40", features = ["full"] }
@@ -19,12 +37,13 @@ dotenvy = "0.15"
 base64 = "0.22"
 futures-util = "0.3"
 url = "2.5"
-# Audio (optional, for local mic/speaker)
-cpal = "0.15"
-# HTTP client for Home Assistant
 reqwest = { version = "0.12", features = ["json"] }
-# Config
-config = "0.14"
+axum = "0.7"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+http = "1"
+sha2 = "0.10"
+getrandom = "0.2"
+cpal = { version = "0.15", optional = true }
 
 [profile.release]
 lto = true

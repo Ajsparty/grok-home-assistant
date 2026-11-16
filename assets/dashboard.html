@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Grok Home</title>
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --ink: #ffffff;
+    --muted: #7d8187;
+    --line: #212327;
+    --orange: #ff6308;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--ink); }
+  body {
+    font: 16px/1.5 "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+    min-height: 100vh;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  a { color: inherit; }
+  header {
+    position: sticky; top: 0; z-index: 2;
+    display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 1.5rem;
+    padding: 1rem 1.6rem;
+    background: rgba(10, 10, 10, 0.92);
+    border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(16px);
+  }
+  .mark { text-decoration: none; }
+  .mark strong { display: block; font-size: 1.35rem; font-weight: 500; letter-spacing: -0.04em; }
+  .mark span, .kicker, .figures span, .presence, .meta {
+    font-family: "Cascadia Mono", "Segoe UI Mono", ui-monospace, Consolas, monospace;
+    letter-spacing: 0.14em; text-transform: uppercase;
+  }
+  .mark span { display: block; margin-top: 0.15rem; color: var(--muted); font-size: 0.62rem; }
+  nav { display: flex; justify-content: center; gap: 1.35rem; flex-wrap: wrap; }
+  nav a { color: var(--muted); text-decoration: none; font-size: 0.95rem; }
+  nav a.on, nav a:hover { color: var(--ink); }
+  .presence {
+    display: flex; align-items: center; gap: 0.5rem;
+    border: 1px solid var(--ink); border-radius: 999px;
+    padding: 0.35rem 0.75rem; font-size: 0.68rem;
+  }
+  .presence i { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--muted); }
+  .presence.live i { background: var(--orange); box-shadow: 0 0 10px var(--orange); }
+  main { max-width: 1080px; margin: 0 auto; padding: 3.2rem 1.6rem 5rem; }
+  .kicker { margin: 0 0 0.8rem; color: var(--muted); font-size: 0.72rem; }
+  h1 {
+    margin: 0 0 0.8rem; font-weight: 400;
+    font-size: clamp(3.2rem, 8vw, 6.2rem);
+    line-height: 0.92; letter-spacing: -0.04em;
+  }
+  .lede { margin: 0 0 2rem; max-width: 38rem; color: #d7d8dc; font-size: 1.15rem; }
+  .trace-wrap { position: relative; height: 92px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .trace { display: flex; align-items: flex-end; gap: 3px; height: 100%; }
+  .trace i { flex: 1; display: block; background: #fff; min-height: 2px; }
+  .trace i.hot { background: var(--orange); }
+  .threshold { position: absolute; left: 0; right: 0; border-top: 1px dashed var(--orange); opacity: 0.8; }
+  .figures { display: grid; grid-template-columns: repeat(4, 1fr); margin: 0 0 2rem; }
+  .figures div { padding: 1.3rem 1rem 1.3rem 0; border-bottom: 1px solid var(--line); }
+  .figures b { display: block; font-size: clamp(1.7rem, 3vw, 2.5rem); font-weight: 400; letter-spacing: -0.03em; }
+  .figures span { color: var(--muted); font-size: 0.68rem; }
+  .split, .stack { display: grid; grid-template-columns: 1fr 1fr; gap: 2.5rem; }
+  .quote { margin: 0.4rem 0 0; font-size: clamp(1.4rem, 2vw, 1.8rem); letter-spacing: -0.03em; line-height: 1.25; }
+  .list { list-style: none; margin: 0; padding: 0; }
+  .list li { padding: 0.9rem 0; border-top: 1px solid var(--line); }
+  .empty { color: var(--muted); }
+  .group { margin-top: 2.6rem; }
+  .group h2 { margin: 0; font-size: 2rem; font-weight: 400; letter-spacing: -0.03em; }
+  .when { margin: 0.25rem 0 0.4rem; color: var(--orange); font-size: 0.85rem; }
+  .field { display: grid; grid-template-columns: 1.15fr 0.85fr; gap: 1.5rem; align-items: center; padding: 1.15rem 0; border-top: 1px solid var(--line); }
+  .field h3 { margin: 0 0 0.25rem; font-size: 1.15rem; font-weight: 500; }
+  .field p { margin: 0; color: var(--muted); }
+  input[type="text"], input[type="time"], input[type="password"], input[type="number"], select {
+    width: 100%; background: transparent; border: 1px solid #3a3d42; border-radius: 999px; padding: 0.7rem 0.95rem;
+  }
+  input:focus, select:focus { outline: 1px solid var(--orange); border-color: var(--orange); }
+  select option { background: #0a0a0a; }
+  .range { display: grid; grid-template-columns: 1fr auto; gap: 0.8rem; align-items: center; }
+  input[type="range"] { width: 100%; accent-color: var(--orange); }
+  .range b { min-width: 4.2rem; text-align: right; font-weight: 400; }
+  .switch { display: flex; align-items: center; gap: 0.7rem; }
+  .actions { display: flex; gap: 0.7rem; margin: 1.2rem 0 0.4rem; }
+  button { cursor: pointer; border-radius: 999px; padding: 0.7rem 1.2rem; }
+  button.solid { background: #fff; color: #0a0a0a; border: 0; }
+  button.ghost { background: transparent; color: #fff; border: 1px solid #fff; }
+  button:disabled { opacity: 0.5; cursor: wait; }
+  #save-note { min-height: 1.4rem; color: var(--muted); }
+  #save-note.bad { color: var(--orange); }
+  .timer-row { display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+  .timer-row b { font-weight: 400; letter-spacing: -0.03em; font-size: 1.6rem; }
+  .row-actions, .days { display: flex; gap: 0.45rem; flex-wrap: wrap; align-items: center; }
+  .card { padding: 1.15rem 0; border-top: 1px solid var(--line); }
+  .card h3 { margin: 0; font-size: 1.35rem; font-weight: 500; }
+  .badge, .warn { color: var(--orange); }
+  .badge { font-family: "Cascadia Mono", "Segoe UI Mono", ui-monospace, Consolas, monospace; letter-spacing: 0.12em; text-transform: uppercase; font-size: 0.68rem; }
+  .days label { border: 1px solid var(--line); border-radius: 999px; padding: 0.3rem 0.7rem; }
+  img.frame { width: 100%; max-height: 280px; object-fit: cover; background: #111; border: 1px solid var(--line); }
+  #lock {
+    position: fixed; inset: 0; z-index: 5;
+    display: grid; place-items: center;
+    padding: 1.6rem; background: rgba(10, 10, 10, 0.94);
+  }
+  #lock[hidden] { display: none; }
+  #lock form { width: min(28rem, 100%); }
+  .inline { display: grid; grid-template-columns: 1.4fr 0.6fr auto; gap: 0.6rem; margin: 1rem 0; }
+  @media (max-width: 800px) { .inline { grid-template-columns: 1fr; } }
+  @media (max-width: 800px) {
+    header { grid-template-columns: 1fr auto; }
+    nav { grid-column: 1 / -1; justify-content: flex-start; }
+    .figures, .split, .field { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <a class="mark" href="/live"><strong>Grok</strong><span>Home voice</span></a>
+  <nav>
+    <a data-nav="live" href="/live">Live</a>
+    <a data-nav="activity" href="/activity">Activity</a>
+    <a data-nav="house" href="/house">House</a>
+    <a data-nav="music" href="/music">Music</a>
+    <a data-nav="alarms" href="/alarms">Alarms</a>
+    <a data-nav="timers" href="/timers">Timers</a>
+    <a data-nav="settings" href="/settings">Settings</a>
+  </nav>
+  <div class="presence" id="presence"><i></i><span id="presence-label">Standby</span><button class="ghost" id="logout" type="button" hidden>Sign out</button></div>
+</header>
+<main>
+  <section data-page="live">
+    <p class="kicker">01 — Live</p>
+    <h1 id="headline">Standing<br>by.</h1>
+    <p class="lede" id="lede">The socket stays closed until the room is loud.</p>
+    <div class="trace-wrap">
+      <div class="trace" id="trace"></div>
+      <div class="threshold" id="threshold"></div>
+    </div>
+    <div class="figures">
+      <div><b id="fig-mic">0.000</b><span>Mic level</span></div>
+      <div><b id="fig-session">0s</b><span>Voice minutes · metered by xAI</span></div>
+      <div><b id="fig-up">0s</b><span>Uptime</span></div>
+      <div><b id="fig-people">—</b><span>People home</span></div>
+    </div>
+    <div class="split">
+      <article>
+        <p class="kicker">Heard</p>
+        <p class="quote" id="heard">Nothing yet</p>
+      </article>
+      <article>
+        <p class="kicker">Last tool</p>
+        <p class="quote" id="tool">None</p>
+      </article>
+    </div>
+    <p class="kicker" style="margin-top:2rem">Wake phrase</p>
+    <p class="quote" id="phrase-text">Closed</p>
+  </section>
+
+  <section data-page="activity" hidden>
+    <p class="kicker">02 — Activity</p>
+    <h1>What the<br>room did.</h1>
+    <p class="lede" id="activity-heard">Nothing has been heard yet.</p>
+    <p class="kicker">Events</p>
+    <ul class="list" id="events"></ul>
+    <p class="kicker" style="margin-top:2rem">Audit</p>
+    <ul class="list" id="audit"></ul>
+  </section>
+
+  <section data-page="house" hidden>
+    <p class="kicker">03 — House</p>
+    <h1 id="house-title">This room.</h1>
+    <p class="lede" id="house-lede"></p>
+    <div class="figures">
+      <div><b id="house-room">—</b><span>Room</span></div>
+      <div><b id="house-source">—</b><span>Audio source</span></div>
+      <div><b id="house-quiet">—</b><span>Quiet hours</span></div>
+      <div><b id="house-confirm">Clear</b><span>Confirmation</span></div>
+    </div>
+    <p class="warn" id="open-warn" hidden>This console has no password. Anyone who can open this address can control the house.</p>
+    <div id="confirm-box" hidden>
+      <p class="kicker">Waiting</p>
+      <p class="quote" id="confirm-text"></p>
+      <div class="row-actions">
+        <button class="solid" type="button" data-yes="1">Yes</button>
+        <button class="ghost" type="button" data-yes="0">No</button>
+      </div>
+    </div>
+    <p class="kicker">People</p>
+    <p class="quote" id="house-people">Unknown</p>
+    <p class="kicker" style="margin-top:2rem">Satellite rooms</p>
+    <ul class="list" id="satellites"></ul>
+    <p class="kicker" style="margin-top:2rem">Lights</p>
+    <p class="empty" id="light-note"></p>
+    <ul class="list" id="lights"></ul>
+    <p class="kicker" style="margin-top:2rem">Doorbell</p>
+    <img class="frame" id="bell-img" alt="Last doorbell frame" hidden>
+    <p class="quote" id="bell-cap">No doorbell snapshot yet.</p>
+  </section>
+
+  <section data-page="music" hidden>
+    <p class="kicker">04 — Music</p>
+    <h1>Play<br>through the house.</h1>
+    <p class="lede">Plays through a Home Assistant media player. Apple Music works when that player is a HomePod, Apple TV, or Music Assistant source. This console does not sign in to Apple.</p>
+    <p class="empty" id="music-note"></p>
+    <div id="players"></div>
+  </section>
+
+  <section data-page="alarms" hidden>
+    <p class="kicker">05 — Alarms</p>
+    <h1>Time<br>to get up.</h1>
+    <p class="lede">Clock alarms are saved on this machine and speak even during quiet hours. Alarm panels arm and disarm only after a yes.</p>
+    <div id="alarm-confirm" hidden>
+      <p class="quote" id="alarm-confirm-text"></p>
+      <div class="row-actions">
+        <button class="solid" type="button" data-yes="1">Yes</button>
+        <button class="ghost" type="button" data-yes="0">No</button>
+      </div>
+    </div>
+    <form id="alarm-form" class="inline">
+      <input id="alarm-label" type="text" placeholder="Label" maxlength="60">
+      <input id="alarm-time" type="time" value="06:30">
+      <button class="solid" type="submit">Add alarm</button>
+    </form>
+    <div class="days" id="alarm-days">
+      <label><input type="checkbox" value="0"> Mon</label>
+      <label><input type="checkbox" value="1"> Tue</label>
+      <label><input type="checkbox" value="2"> Wed</label>
+      <label><input type="checkbox" value="3"> Thu</label>
+      <label><input type="checkbox" value="4"> Fri</label>
+      <label><input type="checkbox" value="5"> Sat</label>
+      <label><input type="checkbox" value="6"> Sun</label>
+    </div>
+    <p id="alarm-note"></p>
+    <ul class="list" id="alarm-list"></ul>
+    <p class="kicker" style="margin-top:2rem">Home Assistant panels</p>
+    <p class="empty" id="panel-note"></p>
+    <div id="panels"></div>
+  </section>
+
+  <section data-page="timers" hidden>
+    <p class="kicker">06 — Timers</p>
+    <h1>Still<br>running.</h1>
+    <form id="timer-form" class="inline">
+      <input id="timer-label" type="text" placeholder="Label" maxlength="60">
+      <input id="timer-seconds" type="number" min="1" max="86400" value="300">
+      <button class="solid" type="submit">Start</button>
+    </form>
+    <p id="timer-note"></p>
+    <ul class="list" id="timers"></ul>
+  </section>
+
+  <section data-page="settings" hidden>
+    <p class="kicker">07 — Settings</p>
+    <h1>How it<br>listens.</h1>
+    <p class="lede">These are the controls a voice agent needs in a house: when to wake, when to stop, how to hear itself, and what it is allowed to say. API keys stay in <span class="meta">.env</span> and are not shown here.</p>
+    <div class="actions">
+      <button class="solid" id="save" type="button">Save</button>
+      <button class="ghost" id="reload" type="button">Reload</button>
+    </div>
+    <p id="save-note"></p>
+    <form id="form"></form>
+    <section class="group">
+      <h2>Nicknames</h2>
+      <p class="when">Applies immediately. One allowlisted entity id per name, such as light.kitchen.</p>
+      <form id="alias-form" class="inline">
+        <input id="alias-name" type="text" placeholder="kitchen lamp" maxlength="60">
+        <input id="alias-entity" type="text" placeholder="light.kitchen">
+        <button class="solid" type="submit">Add</button>
+      </form>
+      <ul class="list" id="alias-list"></ul>
+      <p id="alias-note"></p>
+    </section>
+    <section class="group">
+      <h2>Console lock</h2>
+      <p class="when" id="lock-when">Checking…</p>
+      <form id="password-form">
+        <div class="field"><div><h3>Current password</h3><p>Required once a password is already set.</p></div><div><input id="pass-current" type="password" autocomplete="current-password"></div></div>
+        <div class="field"><div><h3>New password</h3><p>At least 8 characters. This signs every browser out.</p></div><div><input id="pass-next" type="password" autocomplete="new-password"></div></div>
+        <div class="actions">
+          <button class="solid" id="pass-save" type="submit">Set password</button>
+          <button class="ghost" id="pass-clear" type="button">Remove password</button>
+        </div>
+      </form>
+      <p id="pass-note"></p>
+    </section>
+  </section>
+</main>
+<div id="lock" hidden>
+  <form id="lock-form">
+    <p class="kicker">Console</p>
+    <h1>Sign<br>in.</h1>
+    <p class="lede">This dashboard is locked.</p>
+    <input id="lock-password" type="password" autocomplete="current-password" placeholder="Password">
+    <div class="actions"><button class="solid" type="submit">Enter</button></div>
+    <p id="lock-note"></p>
+  </form>
+</div>
+<script>
+const BUILTIN_VOICES = ["eve", "ara", "rex", "sal", "leo"];
+const GROUPS = [
+  { title: "Voice", when: "Applies when the next session opens", fields: [
+    { key: "voice", label: "Voice", hint: "A built-in voice, or a custom voice id from the xAI console.", type: "voice" },
+    { key: "language_hint", label: "Language hint", hint: "Optional BCP-47 tag such as en or es-MX. Empty leaves detection to the model.", type: "text", placeholder: "en" }
+  ]},
+  { title: "Hearing the room", when: "Applies immediately", fields: [
+    { key: "wake_mode", label: "Wake mode", hint: "Energy keeps the socket closed until the room stays loud. Always holds one session open.", type: "select", options: [["energy", "Energy"], ["always", "Always"]] },
+    { key: "wake_phrase", label: "Wake phrase", hint: "Device tools wait until this is in the transcript. Empty skips the phrase check.", type: "text", placeholder: "hey grok" },
+    { key: "wake_rms", label: "Wake loudness", hint: "How loud the microphone must be before a session can open.", type: "range", min: 0.01, max: 0.4, step: 0.005, digits: 3 },
+    { key: "wake_hold_ms", label: "Wake hold", hint: "How long that loudness has to last, in milliseconds.", type: "range", min: 50, max: 1500, step: 50, digits: 0, suffix: " ms" }
+  ]},
+  { title: "Turn taking", when: "Applies immediately", fields: [
+    { key: "follow_up_secs", label: "Follow-up window", hint: "After the wake phrase, more commands are accepted for this many seconds.", type: "range", min: 1, max: 90, step: 1, digits: 0, suffix: " s" },
+    { key: "silence_secs", label: "Silence hangup", hint: "Close the session after the room has been quiet this long.", type: "range", min: 2, max: 60, step: 1, digits: 0, suffix: " s" },
+    { key: "barge_in", label: "Barge-in", hint: "A loud microphone during playback stops the assistant and clears the speaker.", type: "toggle" },
+    { key: "barge_rms", label: "Barge loudness", hint: "How loud the interruption must be. Higher ignores the television.", type: "range", min: 0.02, max: 0.6, step: 0.01, digits: 2 }
+  ]},
+  { title: "Playback", when: "Applies immediately", fields: [
+    { key: "audio_output", label: "Play replies", hint: "Auto plays in the room that just spoke.", type: "select", options: [["auto", "Auto"], ["local", "This machine"], ["satellite", "Satellites"], ["both", "Both"]] },
+    { key: "echo_delay_ms", label: "Echo delay", hint: "A single fixed delay, not full echo cancellation. Match it to your speaker distance.", type: "range", min: 0, max: 240, step: 5, digits: 0, suffix: " ms" },
+    { key: "echo_gain", label: "Echo subtract", hint: "How much of the delayed speaker signal to remove. Zero turns it off.", type: "range", min: 0, max: 1.2, step: 0.05, digits: 2 }
+  ]},
+  { title: "The house", when: "Quiet hours and the room apply now. Search applies next session.", fields: [
+    { key: "room", label: "Room name", hint: "“Turn off the lights” targets lights whose names include this room.", type: "text" },
+    { key: "quiet_hours", label: "Quiet hours", hint: "Ordinary alerts stay quiet. Smoke, gas, leaks, and clock alarms still speak.", type: "toggle" },
+    { key: "quiet_start", label: "Quiet starts", hint: "Local time.", type: "time" },
+    { key: "quiet_end", label: "Quiet ends", hint: "Overnight ranges are supported.", type: "time" },
+    { key: "announce_when_empty", label: "Speak to an empty house", hint: "Ordinary announcements when every person entity is away.", type: "toggle" },
+    { key: "enable_web_search", label: "Web search", hint: "Let the voice session look things up on the web.", type: "toggle" },
+    { key: "enable_x_search", label: "X search", hint: "Also search X. Off unless you want posts in the answer.", type: "toggle" }
+  ]}
+];
+const DAY_NAMES = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+const PAGES = ["live", "activity", "house", "music", "alarms", "timers", "settings"];
+const levels = [];
+let prefs = null;
+let lockInfo = { required: false, from_env: false };
+let aliasMap = {};
+let aliasesLoaded = false;
+let alarmStamp = "";
+
+function esc(value) {
+  return String(value == null ? "" : value).replace(/[&<>"']/g, function (ch) {
+    return {"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[ch];
+  });
+}
+function clock(total) {
+  const secs = Math.max(0, Math.floor(Number(total) || 0));
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  const s = secs % 60;
+  if (h) return h + "h " + m + "m";
+  if (m) return m + "m " + String(s).padStart(2, "0") + "s";
+  return s + "s";
+}
+function pageFromPath() {
+  const name = location.pathname.replace(/^\/+|\/+$/g, "");
+  return PAGES.indexOf(name) >= 0 ? name : "live";
+}
+function show(name) {
+  document.querySelectorAll("[data-page]").forEach(function (el) {
+    el.hidden = el.getAttribute("data-page") !== name;
+  });
+  document.querySelectorAll("[data-nav]").forEach(function (el) {
+    el.classList.toggle("on", el.getAttribute("data-nav") === name);
+  });
+  refreshExtra();
+}
+function peopleLabel(data) {
+  if (data.people_home == null) return "Unknown";
+  if (!data.people_home.length) return "Away";
+  return String(data.people_home.length);
+}
+function peopleText(data) {
+  if (data.people_home == null) return "No person entities, so the house is treated as occupied.";
+  if (!data.people_home.length) return "Everyone is away.";
+  return data.people_home.join(", ");
+}
+function renderTrace(rms) {
+  const gate = prefs && prefs.wake_rms ? prefs.wake_rms : 0.05;
+  levels.push(rms);
+  if (levels.length > 56) levels.shift();
+  document.getElementById("trace").innerHTML = levels.map(function (value) {
+    const height = Math.max(2, Math.min(100, value * 400));
+    return '<i class="' + (value >= gate ? "hot" : "") + '" style="height:' + height + '%"></i>';
+  }).join("");
+  document.getElementById("threshold").style.bottom = Math.min(96, gate * 400) + "%";
+}
+function standbyCopy(data) {
+  const note = (data.voice_note || "").trim();
+  if (note === "Connecting…") return { title: "Opening<br>a session.", lede: note };
+  if (!note || note.indexOf("quiet") >= 0) {
+    return { title: "Standing<br>by.", lede: note || "The socket stays closed until the room is loud." };
+  }
+  return { title: "Voice<br>offline.", lede: note };
+}
+function phraseText(data) {
+  if (!data.voice_connected) return "Closed";
+  if (prefs && !String(prefs.wake_phrase || "").trim()) return "No wake phrase";
+  if (data.phrase_armed) return data.follow_left_secs ? "Open · " + data.follow_left_secs + "s left" : "Open";
+  return "Waiting for the wake phrase";
+}
+function paint(data) {
+  const live = !!data.voice_connected;
+  const pending = data.pending_confirmation || "";
+  document.getElementById("presence").classList.toggle("live", live);
+  document.getElementById("presence-label").textContent = live ? "Live" : "Standby";
+  const headline = document.getElementById("headline");
+  const lede = document.getElementById("lede");
+  if (pending) {
+    headline.innerHTML = "Waiting<br>for a yes.";
+    lede.textContent = pending;
+  } else if (live) {
+    headline.innerHTML = "In<br>session.";
+    lede.textContent = "Open for " + clock(data.session_secs) + " in " + (data.room || "this room") + ". Metered by xAI while open.";
+  } else {
+    const copy = standbyCopy(data);
+    headline.innerHTML = copy.title;
+    lede.textContent = copy.lede;
+  }
+  document.getElementById("phrase-text").textContent = phraseText(data);
+  const rms = Number(data.mic_rms) || 0;
+  renderTrace(rms);
+  document.getElementById("fig-mic").textContent = rms.toFixed(3);
+  document.getElementById("fig-session").textContent = live ? clock(data.session_secs) : "Closed";
+  document.getElementById("fig-up").textContent = clock(data.uptime_secs);
+  document.getElementById("fig-people").textContent = peopleLabel(data);
+  const heard = (data.last_transcript || "").trim();
+  document.getElementById("heard").textContent = heard || "Nothing yet";
+  document.getElementById("tool").textContent = data.last_tool ? data.last_tool + (data.last_tool_at ? " · " + data.last_tool_at : "") : "None";
+  document.getElementById("activity-heard").textContent = heard || "Nothing has been heard yet.";
+  const events = data.recent_events || [];
+  document.getElementById("events").innerHTML = events.length
+    ? events.map(function (line) { return "<li>" + esc(line) + "</li>"; }).join("")
+    : '<li class="empty">No events yet.</li>';
+  document.getElementById("house-title").innerHTML = esc(data.room || "This room").replace(" ", "<br>");
+  document.getElementById("house-lede").textContent = pending ? "A dangerous action is waiting: " + pending : "Presence, quiet hours, lights, and the room that last spoke.";
+  document.getElementById("house-room").textContent = data.room || "—";
+  document.getElementById("house-source").textContent = data.active_source || "—";
+  document.getElementById("house-quiet").textContent = data.quiet_hours ? "On" : "Off";
+  document.getElementById("house-confirm").textContent = pending ? "Waiting" : "Clear";
+  document.getElementById("house-people").textContent = peopleText(data);
+  document.getElementById("confirm-box").hidden = !pending;
+  document.getElementById("confirm-text").textContent = pending;
+  document.getElementById("alarm-confirm").hidden = !pending;
+  document.getElementById("alarm-confirm-text").textContent = pending;
+  const sats = data.satellites || [];
+  document.getElementById("satellites").innerHTML = sats.length
+    ? sats.map(function (name) {
+        return "<li>" + esc(name) + (name === data.active_source ? " · last to speak" : "") + "</li>";
+      }).join("")
+    : '<li class="empty">No satellite rooms connected.</li>';
+  document.getElementById("bell-cap").textContent = data.doorbell_caption || "No doorbell snapshot yet.";
+  const now = Math.floor(Date.now() / 1000);
+  const timers = data.timers || [];
+  document.getElementById("timers").innerHTML = timers.length
+    ? timers.map(function (timer) {
+        const left = Math.max(0, (timer.fire_at_unix || now) - now);
+        return '<li class="timer-row"><span>' + esc(timer.label || "Timer") + '</span><span class="row-actions"><b>' + clock(left) + '</b><button class="ghost" type="button" data-cancel-timer="' + Number(timer.id) + '">Cancel</button></span></li>';
+      }).join("")
+    : '<li class="empty">No timers.</li>';
+  const stamp = JSON.stringify(data.alarms || []);
+  if (stamp !== alarmStamp) {
+    alarmStamp = stamp;
+    const alarms = data.alarms || [];
+    document.getElementById("alarm-list").innerHTML = alarms.length
+      ? alarms.map(function (alarm) {
+          const days = (alarm.days || []).map(function (day) { return DAY_NAMES[day] || ""; }).filter(Boolean).join(" ");
+          const when = String(alarm.hour).padStart(2, "0") + ":" + String(alarm.minute).padStart(2, "0");
+          return '<li class="card"><h3>' + esc(alarm.label) + "</h3><p>" + when + " · " + esc(days || "Every day") + " · " + (alarm.enabled ? "On" : "Off") + '</p><div class="row-actions"><button class="ghost" type="button" data-alarm-enabled="' + Number(alarm.id) + '" data-enabled="' + (alarm.enabled ? "0" : "1") + '">' + (alarm.enabled ? "Pause" : "Resume") + '</button><button class="ghost" type="button" data-alarm-cancel="' + Number(alarm.id) + '">Delete</button></div></li>';
+        }).join("")
+      : '<li class="empty">No clock alarms.</li>';
+  }
+}
+function fieldControl(field, value) {
+  if (field.type === "voice") {
+    const known = BUILTIN_VOICES.indexOf(value) >= 0;
+    const options = BUILTIN_VOICES.map(function (name) {
+      return '<option value="' + name + '"' + (value === name ? " selected" : "") + ">" + name + "</option>";
+    }).join("");
+    return '<select data-key="voice">' + options + '<option value="custom"' + (known ? "" : " selected") + ">Custom id</option></select>"
+      + '<input data-key="voice_custom" type="text" placeholder="custom voice id" value="' + esc(known ? "" : value) + '" style="margin-top:0.6rem;' + (known ? "display:none" : "") + '">';
+  }
+  if (field.type === "select") {
+    return "<select data-key=\"" + field.key + "\">" + field.options.map(function (pair) {
+      return '<option value="' + pair[0] + '"' + (value === pair[0] ? " selected" : "") + ">" + pair[1] + "</option>";
+    }).join("") + "</select>";
+  }
+  if (field.type === "toggle") {
+    return '<label class="switch"><input data-key="' + field.key + '" type="checkbox"' + (value ? " checked" : "") + "> " + (value ? "On" : "Off") + "</label>";
+  }
+  if (field.type === "range") {
+    const shown = Number(value);
+    const text = (Number.isFinite(shown) ? shown.toFixed(field.digits) : "") + (field.suffix || "");
+    return '<div class="range"><input data-key="' + field.key + '" type="range" min="' + field.min + '" max="' + field.max + '" step="' + field.step + '" value="' + esc(value) + '"><b>' + text + "</b></div>";
+  }
+  if (field.type === "time") {
+    return '<input data-key="' + field.key + '" type="time" value="' + esc(value || "00:00") + '">';
+  }
+  return '<input data-key="' + field.key + '" type="text" placeholder="' + esc(field.placeholder || "") + '" value="' + esc(value || "") + '">';
+}
+function renderForm() {
+  document.getElementById("form").innerHTML = GROUPS.map(function (group) {
+    const fields = group.fields.map(function (field) {
+      return '<div class="field"><div><h3>' + field.label + "</h3><p>" + field.hint + "</p></div><div>" + fieldControl(field, prefs[field.key]) + "</div></div>";
+    }).join("");
+    return '<section class="group"><h2>' + group.title + '</h2><p class="when">' + group.when + "</p>" + fields + "</section>";
+  }).join("");
+  const voice = document.querySelector('[data-key="voice"]');
+  const custom = document.querySelector('[data-key="voice_custom"]');
+  if (voice && custom) {
+    voice.addEventListener("change", function () {
+      custom.style.display = voice.value === "custom" ? "block" : "none";
+    });
+  }
+  document.querySelectorAll('input[type="range"]').forEach(function (input) {
+    input.addEventListener("input", function () {
+      const field = GROUPS.flatMap(function (group) { return group.fields; }).filter(function (item) { return item.key === input.getAttribute("data-key"); })[0];
+      const digits = field ? field.digits : 0;
+      const suffix = field && field.suffix ? field.suffix : "";
+      input.parentElement.querySelector("b").textContent = Number(input.value).toFixed(digits) + suffix;
+    });
+  });
+  document.querySelectorAll('.switch input').forEach(function (input) {
+    input.addEventListener("change", function () {
+      input.parentElement.lastChild.textContent = input.checked ? " On" : " Off";
+    });
+  });
+}
+function collect() {
+  const body = {};
+  GROUPS.forEach(function (group) {
+    group.fields.forEach(function (field) {
+      if (field.type === "voice") {
+        const choice = document.querySelector('[data-key="voice"]').value;
+        const custom = document.querySelector('[data-key="voice_custom"]').value.trim();
+        body.voice = choice === "custom" ? custom : choice;
+        return;
+      }
+      const el = document.querySelector('[data-key="' + field.key + '"]');
+      if (field.type === "toggle") body[field.key] = el.checked;
+      else if (field.type === "range") body[field.key] = Number(el.value);
+      else body[field.key] = el.value;
+    });
+  });
+  return body;
+}
+function showLock() { document.getElementById("lock").hidden = false; }
+function hideLock() { document.getElementById("lock").hidden = true; }
+function flash(message) {
+  const id = { timers: "timer-note", alarms: "alarm-note", music: "music-note", settings: "alias-note", house: "light-note" }[pageFromPath()];
+  if (id) document.getElementById(id).textContent = message;
+}
+async function post(url, body) {
+  const response = await fetch(url, {
+    method: "POST",
+    credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(body || {})
+  });
+  if (response.status === 401) { showLock(); throw new Error("sign in"); }
+  const data = await response.json().catch(function () { return { ok: false, error: response.statusText }; });
+  if (!response.ok) throw new Error(data.error || response.statusText);
+  return data;
+}
+async function loadPrefs() {
+  const response = await fetch("/api/settings", { credentials: "same-origin" });
+  if (response.status === 401) { showLock(); return; }
+  prefs = await response.json();
+  renderForm();
+}
+async function loadLock() {
+  const response = await fetch("/api/lock", { credentials: "same-origin" });
+  lockInfo = await response.json();
+  document.getElementById("open-warn").hidden = !!lockInfo.required;
+  document.getElementById("logout").hidden = !lockInfo.required;
+  const when = document.getElementById("lock-when");
+  const form = document.getElementById("password-form");
+  form.querySelectorAll("input, button").forEach(function (el) { el.disabled = !!lockInfo.from_env; });
+  if (lockInfo.from_env) when.textContent = "DASHBOARD_PASSWORD in the environment is in charge. Clear it there to change the password here.";
+  else if (lockInfo.required) when.textContent = "A password is set. Changing it signs every browser out.";
+  else when.textContent = "No password is set. This console is open to anyone who can reach the port.";
+}
+function renderAliases() {
+  const keys = Object.keys(aliasMap).sort();
+  document.getElementById("alias-list").innerHTML = keys.length
+    ? keys.map(function (key) {
+        return '<li class="timer-row"><span>' + esc(key) + " → " + esc(aliasMap[key]) + '</span><button class="ghost" type="button" data-alias-del="' + esc(key) + '">Remove</button></li>';
+      }).join("")
+    : '<li class="empty">No nicknames yet.</li>';
+}
+async function saveAliases() {
+  const response = await fetch("/api/aliases", {
+    method: "PUT",
+    credentials: "same-origin",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(aliasMap)
+  });
+  if (response.status === 401) { showLock(); throw new Error("sign in"); }
+  const data = await response.json().catch(function () { return { error: response.statusText }; });
+  if (!response.ok) throw new Error(data.error || "could not save nicknames");
+  aliasMap = data;
+  aliasesLoaded = true;
+  renderAliases();
+}
+async function loadAliases() {
+  const response = await fetch("/api/aliases", { credentials: "same-origin" });
+  if (response.status === 401) { showLock(); return; }
+  aliasMap = await response.json();
+  aliasesLoaded = true;
+  renderAliases();
+}
+function renderLights(data) {
+  document.getElementById("light-note").textContent = data.note || data.error || "";
+  const lights = data.lights || [];
+  document.getElementById("lights").innerHTML = lights.length
+    ? lights.map(function (light) {
+        return '<li class="timer-row"><span>' + esc(light.name) + '</span><button class="ghost" type="button" data-light="' + esc(light.entity_id) + '" data-on="' + (light.on ? "0" : "1") + '">' + (light.on ? "Turn off" : "Turn on") + "</button></li>";
+      }).join("")
+    : '<li class="empty">' + esc(data.error || "No lights.") + "</li>";
+}
+function musicButton(action, entity, label) {
+  return '<button class="ghost" type="button" data-music="' + action + '" data-entity="' + esc(entity) + '">' + label + "</button>";
+}
+function renderPlayers(players, note) {
+  document.getElementById("music-note").textContent = note || "";
+  document.getElementById("players").innerHTML = (players || []).map(function (player) {
+    const id = esc(player.entity_id);
+    const sources = (player.sources || []).map(function (source) {
+      return "<option" + (source === player.source ? " selected" : "") + ">" + esc(source) + "</option>";
+    }).join("");
+    const volume = player.volume == null ? 0.3 : player.volume;
+    return '<article class="card"><h3>' + esc(player.name) + "</h3>"
+      + (player.badge ? '<p class="badge">' + esc(player.badge) + "</p>" : "")
+      + "<p>" + esc(player.state || "idle") + (player.title ? " · " + esc(player.title) : "") + (player.artist ? " · " + esc(player.artist) : "") + "</p>"
+      + '<div class="row-actions">' + musicButton("play", player.entity_id, "Play") + musicButton("pause", player.entity_id, "Pause") + musicButton("previous", player.entity_id, "Back") + musicButton("next", player.entity_id, "Next") + "</div>"
+      + '<div class="range" style="margin-top:0.8rem"><input data-volume-for="' + id + '" type="range" min="0" max="1" step="0.05" value="' + volume + '"><button class="ghost" type="button" data-music="volume" data-entity="' + id + '">Volume</button></div>'
+      + (sources ? '<div class="row-actions"><select data-source-for="' + id + '">' + sources + '</select><button class="ghost" type="button" data-music="source" data-entity="' + id + '">Use source</button></div>' : "")
+      + '<div class="inline"><input data-query-for="' + id + '" type="text" maxlength="120" placeholder="Song, album, or playlist"><span></span><button class="solid" type="button" data-music="play_query" data-entity="' + id + '">Play this</button></div></article>';
+  }).join("");
+}
+function renderPanels(data) {
+  document.getElementById("panel-note").textContent = data.error || "";
+  const panels = data.panels || [];
+  document.getElementById("panels").innerHTML = panels.length
+    ? panels.map(function (panel) {
+        const id = esc(panel.entity_id);
+        function arm(service, label) {
+          return '<button class="ghost" type="button" data-arm="' + service + '" data-entity="' + id + '">' + label + "</button>";
+        }
+        return '<article class="card"><h3>' + esc(panel.name) + "</h3><p>" + esc(panel.state) + '</p><input data-code-for="' + id + '" type="password" maxlength="16" placeholder="Code, if the panel asks" autocomplete="off"><div class="row-actions">' + arm("alarm_arm_home", "Arm home") + arm("alarm_arm_away", "Arm away") + arm("alarm_arm_night", "Arm night") + arm("alarm_disarm", "Disarm") + "</div></article>";
+      }).join("")
+    : "";
+}
+function renderAudit(lines) {
+  document.getElementById("audit").innerHTML = lines.length
+    ? lines.map(function (line) {
+        const err = line.error ? " · " + line.error : "";
+        return "<li>" + esc((line.ts || "") + " " + (line.tool || "event") + err) + "</li>";
+      }).join("")
+    : '<li class="empty">No audit lines yet.</li>';
+}
+function typingIn(selector) {
+  return document.activeElement && document.activeElement.closest && document.activeElement.closest(selector);
+}
+async function refreshExtra() {
+  const page = pageFromPath();
+  try {
+    if (page === "house") {
+      const response = await fetch("/api/lights", { credentials: "same-origin" });
+      if (response.status === 401) { showLock(); return; }
+      renderLights(await response.json());
+      const img = document.getElementById("bell-img");
+      img.onload = function () { img.hidden = false; };
+      img.onerror = function () { img.hidden = true; };
+      img.src = "/api/doorbell.jpg?t=" + Date.now();
+    } else if (page === "music" && !typingIn("#players")) {
+      const response = await fetch("/api/music", { credentials: "same-origin" });
+      if (response.status === 401) { showLock(); return; }
+      const data = await response.json();
+      renderPlayers(data.players || [], data.error || "");
+    } else if (page === "alarms" && !typingIn("#panels")) {
+      const response = await fetch("/api/alarms", { credentials: "same-origin" });
+      if (response.status === 401) { showLock(); return; }
+      renderPanels(await response.json());
+    } else if (page === "activity") {
+      const response = await fetch("/api/audit?limit=40", { credentials: "same-origin" });
+      if (response.status === 401) { showLock(); return; }
+      const data = await response.json();
+      renderAudit(data.lines || []);
+    } else if (page === "settings") {
+      if (!aliasesLoaded) await loadAliases();
+      await loadLock();
+    }
+  } catch (err) {
+    flash(String(err.message || err));
+  }
+}
+let extraAt = 0;
+async function tick() {
+  try {
+    const response = await fetch("/health", { credentials: "same-origin" });
+    if (response.status === 401) { showLock(); return; }
+    hideLock();
+    paint(await response.json());
+    if (Date.now() - extraAt > 5000) {
+      extraAt = Date.now();
+      refreshExtra();
+    }
+  } catch (err) {
+    document.getElementById("lede").textContent = "The status feed stopped responding.";
+  }
+}
+document.querySelectorAll("[data-nav], .mark").forEach(function (link) {
+  link.addEventListener("click", function (event) {
+    event.preventDefault();
+    history.pushState(null, "", link.getAttribute("href"));
+    show(pageFromPath());
+  });
+});
+window.addEventListener("popstate", function () { show(pageFromPath()); });
+document.getElementById("save").addEventListener("click", async function () {
+  const note = document.getElementById("save-note");
+  const button = document.getElementById("save");
+  button.disabled = true;
+  note.className = "";
+  note.textContent = "Saving…";
+  try {
+    const response = await fetch("/api/settings", {
+      method: "PUT",
+      credentials: "same-origin",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(collect())
+    });
+    if (response.status === 401) { showLock(); return; }
+    const text = await response.text();
+    if (!response.ok) throw new Error(text || response.statusText);
+    prefs = JSON.parse(text);
+    renderForm();
+    note.textContent = "Saved to data/dashboard.json. Hearing, quiet hours, echo, and the wake phrase apply now. Voice and search apply when the next session opens.";
+  } catch (err) {
+    note.className = "bad";
+    note.textContent = String(err.message || err);
+  } finally {
+    button.disabled = false;
+  }
+});
+document.getElementById("reload").addEventListener("click", function () { loadPrefs(); });
+document.getElementById("timer-form").addEventListener("submit", async function (event) {
+  event.preventDefault();
+  try {
+    await post("/api/timers", {
+      label: document.getElementById("timer-label").value,
+      seconds: Number(document.getElementById("timer-seconds").value)
+    });
+    document.getElementById("timer-note").textContent = "Timer started.";
+    tick();
+  } catch (err) {
+    document.getElementById("timer-note").textContent = String(err.message || err);
+  }
+});
+document.getElementById("alarm-form").addEventListener("submit", async function (event) {
+  event.preventDefault();
+  const parts = (document.getElementById("alarm-time").value || "06:30").split(":");
+  const days = Array.prototype.map.call(document.querySelectorAll("#alarm-days input:checked"), function (box) {
+    return Number(box.value);
+  });
+  try {
+    await post("/api/alarms", {
+      label: document.getElementById("alarm-label").value,
+      hour: Number(parts[0]),
+      minute: Number(parts[1]),
+      days: days
+    });
+    document.getElementById("alarm-note").textContent = "Saved. It speaks even during quiet hours.";
+    alarmStamp = "";
+    tick();
+  } catch (err) {
+    document.getElementById("alarm-note").textContent = String(err.message || err);
+  }
+});
+document.getElementById("alias-form").addEventListener("submit", async function (event) {
+  event.preventDefault();
+  const name = document.getElementById("alias-name").value.trim();
+  const entity = document.getElementById("alias-entity").value.trim();
+  if (!name || !entity) return;
+  aliasMap[name] = entity;
+  try {
+    await saveAliases();
+    document.getElementById("alias-name").value = "";
+    document.getElementById("alias-entity").value = "";
+    document.getElementById("alias-note").textContent = "Saved.";
+  } catch (err) {
+    document.getElementById("alias-note").textContent = String(err.message || err);
+  }
+});
+document.getElementById("password-form").addEventListener("submit", async function (event) {
+  event.preventDefault();
+  try {
+    await post("/api/lock", {
+      current: document.getElementById("pass-current").value,
+      password: document.getElementById("pass-next").value
+    });
+    document.getElementById("pass-current").value = "";
+    document.getElementById("pass-next").value = "";
+    showLock();
+  } catch (err) {
+    document.getElementById("pass-note").textContent = String(err.message || err);
+  }
+});
+document.getElementById("pass-clear").addEventListener("click", async function () {
+  try {
+    await post("/api/lock", { current: document.getElementById("pass-current").value, clear: true });
+    document.getElementById("pass-current").value = "";
+    document.getElementById("pass-note").textContent = "Password removed. The console is open.";
+    loadLock();
+  } catch (err) {
+    document.getElementById("pass-note").textContent = String(err.message || err);
+  }
+});
+document.getElementById("lock-form").addEventListener("submit", async function (event) {
+  event.preventDefault();
+  const note = document.getElementById("lock-note");
+  try {
+    await post("/api/login", { password: document.getElementById("lock-password").value });
+    document.getElementById("lock-password").value = "";
+    note.textContent = "";
+    hideLock();
+    loadPrefs();
+    loadLock();
+    tick();
+  } catch (err) {
+    note.textContent = String(err.message || err);
+  }
+});
+document.getElementById("logout").addEventListener("click", async function () {
+  try { await post("/api/logout"); } catch (err) {}
+  showLock();
+});
+document.body.addEventListener("click", async function (event) {
+  const target = event.target.closest("button");
+  if (!target || target.type === "submit") return;
+  try {
+    if (target.hasAttribute("data-yes")) {
+      await post("/api/confirm", { yes: target.getAttribute("data-yes") === "1" });
+      tick();
+    } else if (target.hasAttribute("data-cancel-timer")) {
+      await post("/api/timers/cancel", { id: Number(target.getAttribute("data-cancel-timer")) });
+      tick();
+    } else if (target.hasAttribute("data-alarm-cancel")) {
+      await post("/api/alarms/cancel", { id: Number(target.getAttribute("data-alarm-cancel")) });
+      alarmStamp = "";
+      tick();
+    } else if (target.hasAttribute("data-alarm-enabled")) {
+      await post("/api/alarms/enabled", {
+        id: Number(target.getAttribute("data-alarm-enabled")),
+        enabled: target.getAttribute("data-enabled") === "1"
+      });
+      alarmStamp = "";
+      tick();
+    } else if (target.hasAttribute("data-light")) {
+      await post("/api/lights", { entity_id: target.getAttribute("data-light"), on: target.getAttribute("data-on") === "1" });
+      refreshExtra();
+    } else if (target.hasAttribute("data-music")) {
+      const entity = target.getAttribute("data-entity");
+      const action = target.getAttribute("data-music");
+      const body = { entity_id: entity, action: action };
+      if (action === "volume") {
+        const slider = document.querySelector('[data-volume-for="' + CSS.escape(entity) + '"]');
+        body.volume = slider ? Number(slider.value) : 0.3;
+      }
+      if (action === "source") {
+        const select = document.querySelector('[data-source-for="' + CSS.escape(entity) + '"]');
+        body.source = select ? select.value : "";
+      }
+      if (action === "play_query") {
+        const input = document.querySelector('[data-query-for="' + CSS.escape(entity) + '"]');
+        body.query = input ? input.value : "";
+      }
+      const data = await post("/api/music", body);
+      if (data.needs_confirmation) flash("Waiting for a yes.");
+      refreshExtra();
+    } else if (target.hasAttribute("data-arm")) {
+      const entity = target.getAttribute("data-entity");
+      const codeInput = document.querySelector('[data-code-for="' + CSS.escape(entity) + '"]');
+      const data = await post("/api/security", {
+        entity_id: entity,
+        service: target.getAttribute("data-arm"),
+        code: codeInput ? codeInput.value : ""
+      });
+      if (codeInput) codeInput.value = "";
+      if (data.needs_confirmation) flash("Waiting for a yes. The code is not shown again.");
+      refreshExtra();
+    } else if (target.hasAttribute("data-alias-del")) {
+      delete aliasMap[target.getAttribute("data-alias-del")];
+      await saveAliases();
+    }
+  } catch (err) {
+    if (String(err.message) !== "sign in") flash(String(err.message || err));
+  }
+});
+show(pageFromPath());
+loadLock();
+loadPrefs().then(tick).catch(function (err) {
+  document.getElementById("save-note").textContent = String(err);
+});
+setInterval(tick, 1000);
+</script>
+</body>
+</html>
